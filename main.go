@@ -121,17 +121,19 @@ func convert2(warc string) (err error) {
 	name := strings.TrimSuffix(filepath.Base(warc), filepath.Ext(warc))
 	html := fmt.Sprintf("%s.html", name)
 	resd := filepath.Join(".", fmt.Sprintf("%s_files", name))
-
 	err = os.MkdirAll(resd, 0766)
 	if err != nil {
 		return fmt.Errorf("mkdir %s error: %w", resd, err)
 	}
 
+	// get html
 	doc, err := w.Doc()
 	if err != nil {
 		_ = ioutil.WriteFile(html, w.WebMainResources.WebResourceData, 0666)
 		return fmt.Errorf("parse %s error: %w", html, err)
 	}
+
+	// process html
 	doc.Find("img,link,script").Each(func(i int, e *goquery.Selection) {
 		var attr string
 		switch e.Get(0).Data {
@@ -155,24 +157,23 @@ func convert2(warc string) (err error) {
 			return
 		}
 
-		// into absolute reference
+		// convert into absolute references
 		if !strings.HasPrefix(src, "http") {
 			src = w.PatchRef(src)
 			e.SetAttr(attr, src)
 		}
 
 		local := path.Join(resd, md5str(src)+path.Ext(src))
-
-		_, err := os.Open(local)
+		fd, err := os.Open(local)
 		switch {
-		case err == nil:
+		case err == nil: // file exist
+			fd.Close()
 		case errors.Is(err, fs.ErrNotExist):
 			res, exist := w.FindResource(src)
 			if !exist {
 				log.Printf("resource %s not exist", src)
 				return
 			}
-
 			err = ioutil.WriteFile(local, res.WebResourceData, 0666)
 			if err != nil {
 				log.Fatalf("cannot write %s: %s", local, err)
