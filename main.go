@@ -159,7 +159,7 @@ func convert2(warc string) (err error) {
 
 		// convert into absolute references
 		if !strings.HasPrefix(src, "http") {
-			src = w.PatchRef(src)
+			src = w.patchRef(src)
 			e.SetAttr(attr, src)
 		}
 

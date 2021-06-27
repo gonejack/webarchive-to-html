@@ -30,23 +30,6 @@ func (w *WebArchive) Doc() (*goquery.Document, error) {
 	}
 	return w.doc, nil
 }
-func (w *WebArchive) PatchRef(ref string) string {
-	refURL, err := url.Parse(ref)
-	if err != nil {
-		return ref
-	}
-	mainURL, err := url.Parse(w.WebMainResources.WebResourceURL)
-	if err != nil {
-		return ref
-	}
-	if refURL.Host == "" {
-		refURL.Host = mainURL.Host
-	}
-	if refURL.Scheme == "" {
-		refURL.Scheme = mainURL.Scheme
-	}
-	return refURL.String()
-}
 func (w *WebArchive) FindResource(ref string) (res *Resources, exist bool) {
 	if w.resMap == nil {
 		w.resMap = make(map[string]*Resources)
@@ -76,6 +59,23 @@ func (w *WebArchive) patchDocument() {
 	meta := fmt.Sprintf(`<meta name="inostar:publish" content="%s">`, w.pubTime().Format(time.RFC1123Z))
 	doc.Find("head").AppendHtml(meta)
 	doc.Find("body").PrependHtml(w.header()).AppendHtml(w.footer())
+}
+func (w *WebArchive) patchRef(ref string) string {
+	refURL, err := url.Parse(ref)
+	if err != nil {
+		return ref
+	}
+	mainURL, err := url.Parse(w.WebMainResources.WebResourceURL)
+	if err != nil {
+		return ref
+	}
+	if refURL.Host == "" {
+		refURL.Host = mainURL.Host
+	}
+	if refURL.Scheme == "" {
+		refURL.Scheme = mainURL.Scheme
+	}
+	return refURL.String()
 }
 func (w *WebArchive) header() string {
 	const tpl = `
