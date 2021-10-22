@@ -5,20 +5,30 @@ import (
 	"fmt"
 	"html"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"howett.net/plist"
 )
 
 type WebArchive struct {
 	WebMainResources *Resources   `plist:"WebMainResource"`
 	WebSubResources  []*Resources `plist:"WebSubresources"`
 
-	doc    *goquery.Document
-	resMap map[string]*Resources
+	doc *goquery.Document
+	res map[string]*Resources
 }
 
+func (w *WebArchive) From(warc string) (err error) {
+	fd, err := os.Open(warc)
+	if err == nil {
+		err = plist.NewDecoder(fd).Decode(w)
+		_ = fd.Close()
+	}
+	return
+}
 func (w *WebArchive) Doc() (*goquery.Document, error) {
 	if w.doc == nil {
 		doc, err := goquery.NewDocumentFromReader(bytes.NewReader(w.WebMainResources.WebResourceData))
@@ -31,13 +41,13 @@ func (w *WebArchive) Doc() (*goquery.Document, error) {
 	return w.doc, nil
 }
 func (w *WebArchive) FindResource(ref string) (res *Resources, exist bool) {
-	if w.resMap == nil {
-		w.resMap = make(map[string]*Resources)
+	if w.res == nil {
+		w.res = make(map[string]*Resources)
 		for _, res := range w.WebSubResources {
-			w.resMap[res.WebResourceURL] = res
+			w.res[res.WebResourceURL] = res
 		}
 	}
-	res, exist = w.resMap[ref]
+	res, exist = w.res[ref]
 	return
 }
 func (w *WebArchive) patchDocument() {
@@ -61,21 +71,21 @@ func (w *WebArchive) patchDocument() {
 	doc.Find("body").PrependHtml(w.header()).AppendHtml(w.footer())
 }
 func (w *WebArchive) patchRef(ref string) string {
-	refURL, err := url.Parse(ref)
+	mu, err := url.Parse(w.WebMainResources.WebResourceURL)
 	if err != nil {
 		return ref
 	}
-	mainURL, err := url.Parse(w.WebMainResources.WebResourceURL)
+	ru, err := url.Parse(ref)
 	if err != nil {
 		return ref
 	}
-	if refURL.Host == "" {
-		refURL.Host = mainURL.Host
+	if ru.Host == "" {
+		ru.Host = mu.Host
 	}
-	if refURL.Scheme == "" {
-		refURL.Scheme = mainURL.Scheme
+	if ru.Scheme == "" {
+		ru.Scheme = mu.Scheme
 	}
-	return refURL.String()
+	return ru.String()
 }
 func (w *WebArchive) header() string {
 	const tpl = `

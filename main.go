@@ -14,7 +14,6 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
-	"howett.net/plist"
 )
 
 func main() {
@@ -104,21 +103,16 @@ func convert(warc string) (err error) {
 	return
 }
 
-func convert2(warc string) (err error) {
-	fd, err := os.Open(warc)
-	if err != nil {
-		return
-	}
-	defer fd.Close()
+func convert2(file string) (err error) {
+	var warc WebArchive
 
-	var w WebArchive
-	err = plist.NewDecoder(fd).Decode(&w)
+	err = warc.From(file)
 	if err != nil {
 		return
 	}
 
 	// make resource dir
-	name := strings.TrimSuffix(filepath.Base(warc), filepath.Ext(warc))
+	name := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
 	html := fmt.Sprintf("%s.html", name)
 	resd := filepath.Join(".", fmt.Sprintf("%s_files", name))
 	err = os.MkdirAll(resd, 0766)
@@ -127,51 +121,47 @@ func convert2(warc string) (err error) {
 	}
 
 	// get html
-	doc, err := w.Doc()
+	doc, err := warc.Doc()
 	if err != nil {
-		_ = ioutil.WriteFile(html, w.WebMainResources.WebResourceData, 0666)
+		_ = ioutil.WriteFile(html, warc.WebMainResources.WebResourceData, 0666)
 		return fmt.Errorf("parse %s error: %w", html, err)
 	}
 
 	// process html
 	doc.Find("img,link,script").Each(func(i int, e *goquery.Selection) {
-		var attr string
+		attr := "src"
 		switch e.Get(0).Data {
-		case "img":
-			attr = "src"
 		case "link":
 			rel, _ := e.Attr("rel")
 			if rel == "canonical" {
 				return
 			}
 			attr = "href"
-		case "script":
-			attr = "src"
 		}
 
-		src, _ := e.Attr(attr)
+		ref, _ := e.Attr(attr)
 		switch {
-		case src == "":
+		case ref == "":
 			return
-		case strings.HasPrefix(src, "data:"):
+		case strings.HasPrefix(ref, "data:"):
 			return
 		}
 
 		// convert into absolute references
-		if !strings.HasPrefix(src, "http") {
-			src = w.patchRef(src)
-			e.SetAttr(attr, src)
+		if !strings.HasPrefix(ref, "http") {
+			ref = warc.patchRef(ref)
+			e.SetAttr(attr, ref)
 		}
 
-		local := path.Join(resd, md5str(src)+path.Ext(src))
-		fd, err := os.Open(local)
+		local := path.Join(resd, md5str(ref)+path.Ext(ref))
+		localFd, err := os.Open(local)
 		switch {
 		case err == nil: // file exist
-			fd.Close()
+			_ = localFd.Close()
 		case errors.Is(err, fs.ErrNotExist):
-			res, exist := w.FindResource(src)
+			res, exist := warc.FindResource(ref)
 			if !exist {
-				log.Printf("resource %s not exist", src)
+				log.Printf("resource %s not exist", ref)
 				return
 			}
 			err = ioutil.WriteFile(local, res.WebResourceData, 0666)
@@ -187,12 +177,12 @@ func convert2(warc string) (err error) {
 		e.SetAttr(attr, local)
 	})
 
-	data, err := doc.Html()
+	content, err := doc.Html()
 	if err != nil {
 		return fmt.Errorf("build html error: %w", err)
 	}
 
-	err = ioutil.WriteFile(html, []byte(data), 0666)
+	err = ioutil.WriteFile(html, []byte(content), 0666)
 	if err != nil {
 		return fmt.Errorf("write %s error: %w", html, err)
 	}
