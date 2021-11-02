@@ -186,5 +186,5 @@ type Resources struct {
 	WebResourceURL              string `plist:"WebResourceURL"`
 	WebResourceFrameName        string `plist:"WebResourceFrameName"`
 	WebResourceData             []byte `plist:"WebResourceData"`
-	//WebResourceResponse         []byte `plist:"WebResourceResponse"`
+	//WebResourceResponse         interface{} `plist:"WebResourceResponse"`
 }

@@ -131,11 +131,12 @@ func (c *WarToHtml) modRef(e *goquery.Selection, w *model.WebArchive, res map[st
 	if !exist {
 		local, exist = res[w.PatchRef(ref)] // try convert into absolute references
 	}
-	if !exist {
+	if exist {
+		e.SetAttr(attr, local)
+	} else {
 		if c.Verbose {
 			log.Printf("could not find local file of %s", ref)
 		}
-		return
+		e.SetAttr(attr, w.PatchRef(ref))
 	}
-	e.SetAttr(attr, local)
 }
