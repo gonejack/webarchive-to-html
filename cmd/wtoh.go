@@ -26,44 +26,44 @@ type WarToHtml struct {
 	options
 }
 
-func (w *WarToHtml) Run() (err error) {
-	kong.Parse(&w.options,
+func (c *WarToHtml) Run() (err error) {
+	kong.Parse(&c.options,
 		kong.Name("webarchive-to-html"),
 		kong.Description("This command line converts .webarchive file to .html."),
 		kong.UsageOnError(),
 	)
 
-	if w.About {
+	if c.About {
 		fmt.Println("Visit https://github.com/gonejack/webarchive-to-html")
 		return
 	}
 
 	if runtime.GOOS == "windows" {
-		for _, html := range w.Wars {
+		for _, html := range c.Wars {
 			if html == "*.webarchive" {
-				w.Wars = nil
+				c.Wars = nil
 				break
 			}
 		}
 	}
 
-	if len(w.Wars) == 0 || w.Wars[0] == "*.webarchive" {
-		w.Wars, _ = filepath.Glob("*.webarchive")
+	if len(c.Wars) == 0 || c.Wars[0] == "*.webarchive" {
+		c.Wars, _ = filepath.Glob("*.webarchive")
 	}
 
-	return w.run()
+	return c.run()
 }
-func (w *WarToHtml) run() error {
-	for _, war := range w.Wars {
+func (c *WarToHtml) run() error {
+	for _, war := range c.Wars {
 		log.Printf("process %s", war)
-		err := w.convert(war)
+		err := c.convert(war)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
 }
-func (w *WarToHtml) convert(webarchive string) (err error) {
+func (c *WarToHtml) convert(webarchive string) (err error) {
 	var warc model.WebArchive
 
 	err = warc.From(webarchive)
@@ -72,14 +72,13 @@ func (w *WarToHtml) convert(webarchive string) (err error) {
 	}
 
 	// extract resources
-	name := strings.TrimSuffix(filepath.Base(webarchive), filepath.Ext(webarchive))
-	html := fmt.Sprintf("%s.html", name)
-	res, err := warc.ExtractResources(path.Join(".", fmt.Sprintf("%s_files", name)))
+	basename := strings.TrimSuffix(filepath.Base(webarchive), filepath.Ext(webarchive))
+	res, err := warc.ExtractResources(path.Join(".", fmt.Sprintf("%s_files", basename)))
 	if err != nil {
 		return fmt.Errorf("could not extract files: %w", err)
 	}
 
-	if w.Verbose {
+	if c.Verbose {
 		for ref, local := range res {
 			if strings.HasPrefix(ref, "data:") {
 				tmp := []rune(ref)
@@ -92,26 +91,27 @@ func (w *WarToHtml) convert(webarchive string) (err error) {
 	}
 
 	// parse html
-	doc, err := warc.Doc(w.Decorate)
+	htmlfile := fmt.Sprintf("%s.html", basename)
+	doc, err := warc.Doc(c.Decorate)
 	if err != nil {
-		_ = os.WriteFile(html, warc.WebMainResources.WebResourceData, 0666)
-		return fmt.Errorf("parse %s error: %w", html, err)
+		_ = os.WriteFile(htmlfile, warc.WebMainResources.WebResourceData, 0666)
+		return fmt.Errorf("parse %s error: %w", htmlfile, err)
 	}
-	doc.Find("img,link,script").Each(func(i int, e *goquery.Selection) { w.modifyRef(e, &warc, res) })
+	doc.Find("img,link,script").Each(func(i int, e *goquery.Selection) { c.modRef(e, &warc, res) })
 
-	patched, err := doc.Html()
+	html, err := doc.Html()
 	if err != nil {
 		return fmt.Errorf("build html error: %w", err)
 	}
 
-	err = os.WriteFile(html, []byte(patched), 0666)
+	err = os.WriteFile(htmlfile, []byte(html), 0666)
 	if err != nil {
-		return fmt.Errorf("write %s error: %w", html, err)
+		return fmt.Errorf("write %s error: %w", htmlfile, err)
 	}
 
 	return
 }
-func (w *WarToHtml) modifyRef(e *goquery.Selection, warc *model.WebArchive, res map[string]string) {
+func (c *WarToHtml) modRef(e *goquery.Selection, w *model.WebArchive, res map[string]string) {
 	attr := "src"
 	switch e.Get(0).Data {
 	case "link":
@@ -129,15 +129,13 @@ func (w *WarToHtml) modifyRef(e *goquery.Selection, warc *model.WebArchive, res 
 
 	local, exist := res[ref]
 	if !exist {
-		// try convert into absolute references
-		local, exist = res[warc.PatchRef(ref)]
+		local, exist = res[w.PatchRef(ref)] // try convert into absolute references
 	}
 	if !exist {
-		if w.Verbose {
+		if c.Verbose {
 			log.Printf("could not find local file of %s", ref)
 		}
 		return
 	}
-
 	e.SetAttr(attr, local)
 }

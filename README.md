@@ -19,9 +19,10 @@ This command line converts Safari's .webarchive file to .html.
 ### Flags
 ```
 Flags:
-  -h, --help       Show context-sensitive help.
-  -v, --verbose    Verbose printing.
-      --about      About.
+  -h, --help        Show context-sensitive help.
+  -v, --verbose     Verbose printing.
+      --decorate    Append Header & Footer (not suitable for complex page) to html.
+      --about       About.
 ```
 
 ### Tips
