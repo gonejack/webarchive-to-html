@@ -15,3 +15,21 @@ This command line converts Safari's .webarchive file to .html.
 ```shell
 > webarchive-to-html *.webarchive
 ```
+
+### Flags
+```
+Flags:
+  -h, --help       Show context-sensitive help.
+  -v, --verbose    Verbose printing.
+      --about      About.
+```
+
+### Tips
+
+Chrome and Firefox would not load local images by default. 
+
+To change their settings:
+
+https://dev.to/dengel29/loading-local-files-in-firefox-and-chrome-m9f.
+
+Or use Safari instead.
