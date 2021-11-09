@@ -2,6 +2,8 @@
 
 This command line converts Safari's .webarchive file to .html.
 
+For converting .webarchive to a complete resources embed .html, there is also [webarchive-to-singlefile](https://github.com/gonejack/webarchive-to-singlefile) 
+
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/gonejack/webarchive-to-html)
 ![Build](https://github.com/gonejack/webarchive-to-html/actions/workflows/go.yml/badge.svg)
 [![GitHub license](https://img.shields.io/github/license/gonejack/webarchive-to-html.svg?color=blue)](LICENSE)
