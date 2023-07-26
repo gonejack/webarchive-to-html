@@ -97,6 +97,7 @@ func (c *WarToHtml) convert(webarchive string) (err error) {
 		_ = os.WriteFile(htmlfile, warc.WebMainResources.WebResourceData, 0666)
 		return fmt.Errorf("parse %s error: %w", htmlfile, err)
 	}
+	doc.Find("head").Find("base").Remove()
 	doc.Find("img,link,script").Each(func(i int, e *goquery.Selection) { c.modRef(e, &warc, res) })
 
 	html, err := doc.Html()
